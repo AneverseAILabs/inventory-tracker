@@ -118,8 +118,13 @@ companies = SECTORS[sector]
 # =========================
 # FUNCTIONS
 # =========================
+import urllib.parse
+
 def fetch_recent_news(company, hours=48):
-    url = f"https://news.google.com/rss/search?q={company}+stock&hl=en-IN&gl=IN&ceid=IN:en"
+
+    query = urllib.parse.quote(f"{company} stock")
+    url = f"https://news.google.com/rss/search?q={query}&hl=en-IN&gl=IN&ceid=IN:en"
+
     feed = feedparser.parse(url)
 
     recent = []
