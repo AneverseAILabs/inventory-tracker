@@ -24,11 +24,11 @@ background:#f4f7fb;
 }
 
 h1{
-color:#2e8b57;
+color:#27F5E4;
 }
 
 h2,h3,h4{
-color:#6a5acd;
+color:#27F5E4;
 }
 
 .news-card{
