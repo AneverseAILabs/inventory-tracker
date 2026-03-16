@@ -27,7 +27,7 @@ color:#0C3838;
 }
 
 p,div,span,label{
-color:#27F5E4;
+color:#0C3838;
 }
 
 .stMarkdown{
