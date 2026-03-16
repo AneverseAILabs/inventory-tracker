@@ -6,38 +6,57 @@ import urllib.parse
 from datetime import datetime, timedelta
 from groq import Groq
 
+
 # ======================
 # PAGE CONFIG
 # ======================
 
 st.set_page_config(page_title="AI Investment Dashboard", layout="wide")
 
+
 # ======================
-# UI STYLE
+# DARK UI THEME
 # ======================
 
 st.markdown("""
 <style>
 
 .stApp{
-background:#f4f7fb;
+background:#0f172a;
 }
 
-h1{
+h1,h2,h3,h4,h5,h6{
 color:#27F5E4;
 }
 
-h2,h3,h4{
+p,div,span,label{
+color:#27F5E4;
+}
+
+.stMarkdown{
 color:#27F5E4;
 }
 
 .news-card{
-background:white;
+background:#1e293b;
 padding:12px;
 border-radius:10px;
-border-left:5px solid #6a5acd;
+border-left:5px solid #27F5E4;
 margin-bottom:10px;
-box-shadow:0 2px 6px rgba(0,0,0,0.05);
+box-shadow:0 2px 6px rgba(0,0,0,0.2);
+color:#27F5E4;
+}
+
+.stButton>button{
+background:#27F5E4;
+color:#0f172a;
+border-radius:10px;
+padding:8px 20px;
+border:none;
+}
+
+.stButton>button:hover{
+background:#22d3ee;
 }
 
 </style>
@@ -68,7 +87,7 @@ def run_ai(prompt):
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {"role":"system","content":"You are a financial market analyst."},
+                {"role":"system","content":"You are a financial analyst."},
                 {"role":"user","content":prompt}
             ]
         )
@@ -76,7 +95,7 @@ def run_ai(prompt):
         return completion.choices[0].message.content
 
     except:
-        return "AI service unavailable"
+        return "AI analysis unavailable"
 
 
 # ======================
@@ -99,7 +118,7 @@ stocks_df = load_nse_stocks()
 
 
 # ======================
-# MARKET METRIC
+# MARKET METRIC FUNCTION
 # ======================
 
 @st.cache_data(ttl=600)
@@ -247,14 +266,14 @@ with tab1:
         text = "\n".join(news)
 
         prompt = f"""
-Analyze Indian stock market sentiment based on news:
+Analyze Indian stock market sentiment from the following news:
 
 {text}
 
 Return:
 Market sentiment
 Key drivers
-Short term outlook
+Short outlook
 """
 
         result = run_ai(prompt)
@@ -303,11 +322,16 @@ with tab2:
     col1,col2 = st.columns(2)
 
     with col1:
+
         st.write("🚀 Top Gainers")
+
         st.dataframe(gainers,width=500)
 
+
     with col2:
+
         st.write("🔻 Top Losers")
+
         st.dataframe(losers,width=500)
 
 
@@ -357,7 +381,7 @@ Confidence score
 
         result = run_ai(prompt)
 
-        st.subheader("AI Investment Insight")
+        st.subheader("🤖 AI Investment Insight")
 
         st.write(result)
 
@@ -374,35 +398,34 @@ with tab4:
     st.markdown("""
 
 ### Market Overview
-Shows major Indian and global indices.
+Shows Indian and global market indicators.
 
 ### Market Movers
-Displays top gainers and losers in the market.
+Displays top gaining and losing stocks.
 
 ### Company Analysis
-Select any NSE company (1800+ available) to analyze:
+Choose any NSE company (1800+ companies available) to analyze.
 
-• Historical stock chart  
-• Latest company news  
+Includes:
+• Stock price history  
+• Latest news  
 • AI investment insights  
 
 ---
 
-### Understanding AI Signals
+### AI Signals
 
-| Signal | Meaning |
-|------|------|
-Buy | Positive outlook |
-Hold | Stable but limited upside |
-Sell | Risky or negative outlook |
+Buy → Positive outlook  
+Hold → Neutral outlook  
+Sell → Negative outlook  
 
 ---
 
-### Important Disclaimer
+### Disclaimer
 
-This tool is for **educational purposes only**.
+This dashboard is for **educational purposes only**.
 
-Always do your own research before investing.
+Always perform your own research before investing.
 
 """)
 
@@ -413,11 +436,8 @@ Always do your own research before investing.
 
 st.markdown("""
 <hr>
-
-<div style="text-align:center;color:gray">
-
+<div style="text-align:center;color:#27F5E4">
 AI Investment Dashboard<br>
 Developed by Ankit
-
 </div>
 """, unsafe_allow_html=True)
