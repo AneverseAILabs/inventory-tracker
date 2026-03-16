@@ -21,12 +21,9 @@ st.set_page_config(page_title="AI Investment Dashboard", layout="wide")
 st.markdown("""
 <style>
 
-.stApp{
-background:#0f172a;
-}
 
 h1,h2,h3,h4,h5,h6{
-color:#27F5E4;
+color:#0C3838;
 }
 
 p,div,span,label{
@@ -34,14 +31,14 @@ color:#27F5E4;
 }
 
 .stMarkdown{
-color:#27F5E4;
+color:#0C3838;
 }
 
 .news-card{
 background:#1e293b;
 padding:12px;
 border-radius:10px;
-border-left:5px solid #27F5E4;
+border-left:5px solid #0C3838;
 margin-bottom:10px;
 box-shadow:0 2px 6px rgba(0,0,0,0.2);
 color:#27F5E4;
