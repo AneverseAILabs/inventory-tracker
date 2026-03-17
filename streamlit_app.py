@@ -211,7 +211,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 "🔥 Market Movers",
 "📈 Company Analysis",
 "🧠 AI Advisor",
- "👤 User Guidance",
+ "👤 User Guidance"
 ])
 
 
@@ -420,7 +420,7 @@ Confidence score
 # TAB 5 AI ADVISOR
 # ======================
 
-with tab5:
+with tab4:
 
     st.subheader("🧠 AI Investment Advisor")
 
