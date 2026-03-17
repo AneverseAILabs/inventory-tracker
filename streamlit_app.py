@@ -1,4 +1,4 @@
-```python
+
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -498,4 +498,4 @@ AI Investment Dashboard<br>
 Developed by Ankit Srivastava / 9616216095 
 </div>
 """, unsafe_allow_html=True)
-```
+
