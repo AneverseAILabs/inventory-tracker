@@ -69,15 +69,9 @@ try:
 except:
     client = None
 
-
-# ======================
-# AI FUNCTION
-# ======================
-
 def run_ai(prompt):
-
     if client is None:
-        return None
+        return "AI not configured"
 
     try:
         completion = client.chat.completions.create(
@@ -88,66 +82,24 @@ def run_ai(prompt):
             ]
         )
         return completion.choices[0].message.content
-
     except:
-        return None
-
+        return "AI failed"
 
 # ======================
-# LOAD NSE STOCK LIST
+# LOAD STOCKS
 # ======================
-
 @st.cache_data
-def load_nse_stocks():
-    url = "https://archives.nseindia.com/content/equities/EQUITY_L.csv"
-    df = pd.read_csv(url)
+def load_nse():
+    df = pd.read_csv("https://archives.nseindia.com/content/equities/EQUITY_L.csv")
     df["ticker"] = df["SYMBOL"] + ".NS"
     return df
 
-
-stocks_df = load_nse_stocks()
-
+stocks_df = load_nse()
 
 # ======================
-# FEATURE ENGINEERING
+# FUNCTIONS
 # ======================
-
-def add_features(df):
-
-    df = df.copy()
-
-    df["returns"] = df["Close"].pct_change()
-    df["ma20"] = df["Close"].rolling(20).mean()
-    df["ma50"] = df["Close"].rolling(50).mean()
-    df["volatility"] = df["returns"].rolling(20).std()
-    df["momentum"] = df["Close"] - df["Close"].shift(10)
-
-    return df.dropna()
-
-
-# ======================
-# SIGNAL FUNCTION
-# ======================
-
-def generate_signal(df):
-
-    latest = df.iloc[-1]
-
-    if latest["Close"] > latest["ma20"] > latest["ma50"]:
-        return "🟢 BUY"
-    elif latest["Close"] < latest["ma20"] < latest["ma50"]:
-        return "🔴 SELL"
-    else:
-        return "🟡 HOLD"
-
-
-# ======================
-# MARKET METRIC
-# ======================
-
-@st.cache_data(ttl=600)
 def market_metric(symbol):
-
     try:
         df = yf.Ticker(symbol).history(period="5d")
         latest = df["Close"].iloc[-1]
@@ -157,184 +109,153 @@ def market_metric(symbol):
     except:
         return None,None
 
-
-# ======================
-# NEWS FUNCTION
-# ======================
-
-@st.cache_data(ttl=3600)
 def fetch_news(query):
-
     q = urllib.parse.quote(query)
     url = f"https://news.google.com/rss/search?q={q}&hl=en-IN&gl=IN&ceid=IN:en"
-
     feed = feedparser.parse(url)
+    return [e.title for e in feed.entries[:10]]
 
-    headlines = []
-    cutoff = datetime.now() - timedelta(hours=48)
+def add_features(df):
+    df["returns"] = df["Close"].pct_change()
+    df["ma20"] = df["Close"].rolling(20).mean()
+    df["ma50"] = df["Close"].rolling(50).mean()
+    return df.dropna()
 
-    for entry in feed.entries:
-        if hasattr(entry,"published_parsed"):
-            published = datetime(*entry.published_parsed[:6])
-            if published >= cutoff:
-                headlines.append(entry.title)
+def signal(df):
+    latest = df.iloc[-1]
+    if latest["Close"] > latest["ma20"] > latest["ma50"]:
+        return "🟢 BUY"
+    elif latest["Close"] < latest["ma20"] < latest["ma50"]:
+        return "🔴 SELL"
+    return "🟡 HOLD"
 
-    return headlines[:10]
-
-
-# ======================
-# RECOMMEND STOCKS
-# ======================
-
-def recommend_stocks(risk_level):
-
-    sample = stocks_df["ticker"].sample(120)
-
-    recommendations = []
-
+def recommend(risk):
+    sample = stocks_df["ticker"].sample(100)
+    data=[]
     for s in sample:
         try:
             df = yf.Ticker(s).history(period="6mo")
+            vol = df["Close"].pct_change().std()
+            if (risk=="Low" and vol<0.015) or \
+               (risk=="Medium" and vol<0.03) or \
+               (risk=="High"):
+                data.append((s,vol))
+        except: pass
+    return pd.DataFrame(data,columns=["Stock","Volatility"]).head(10)
 
-            if len(df) < 50:
-                continue
-
-            df["returns"] = df["Close"].pct_change()
-            vol = df["returns"].std()
-            momentum = df["Close"].iloc[-1] - df["Close"].iloc[0]
-
-            if risk_level == "Low" and vol < 0.015:
-                recommendations.append((s, vol, momentum))
-
-            elif risk_level == "Medium" and 0.015 <= vol < 0.03:
-                recommendations.append((s, vol, momentum))
-
-            elif risk_level == "High" and vol >= 0.03:
-                recommendations.append((s, vol, momentum))
-
-        except:
-            pass
-
-    return pd.DataFrame(
-        recommendations,
-        columns=["Stock","Volatility","Momentum"]
-    ).head(10)
-
-
-# ======================
-# AI PORTFOLIO ALLOCATION
-# ======================
-
-def ai_allocate_portfolio(recs, total_amount):
-
-    if recs.empty:
-        return None
-
-    prompt = f"""
-You are a professional portfolio manager.
-
-Allocate investment across these stocks:
-
+def ai_alloc(recs, amt):
+    prompt=f"""
+Allocate ₹{amt} across:
 {recs.to_dict(orient='records')}
 
-Total Investment: ₹{total_amount}
-
-Rules:
-- Assign weight (%) to each stock
-- Total = 100
-- Diversify
-- Consider volatility and momentum
-
-Return ONLY JSON:
-[{{"stock":"ABC.NS","weight":20}}]
+Return JSON:
+[{{"stock":"ABC","weight":20}}]
 """
-
-    response = run_ai(prompt)
-
+    res = run_ai(prompt)
     try:
         import json
-        allocation = json.loads(response)
-
-        df = pd.DataFrame(allocation)
-
-        df["Investment (₹)"] = (
-            df["weight"]/100 * total_amount
-        ).round(0)
-
+        df = pd.DataFrame(json.loads(res))
+        df["Investment"]=df["weight"]/100*amt
         return df
-
     except:
         return None
 
+# ======================
+# TITLE
+# ======================
+st.title("📊 AI Investment Dashboard")
 
 # ======================
-# UI
+# TABS
 # ======================
-
-st.title("📊 AI Investment Intelligence Dashboard")
-
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-"📊 Market Overview",
-"🔥 Market Movers",
-"📈 Company Analysis",
-"👤 User Guidance",
-"🎯 Risk Advisor"
+tab1,tab2,tab3,tab4,tab5 = st.tabs([
+"📊 Market",
+"🔥 Movers",
+"📈 Company",
+"👤 Guide",
+"🎯 Advisor"
 ])
 
+# ======================
+# TAB1
+# ======================
+with tab1:
+    st.subheader("Indian Market")
+
+    for name,sym in {
+        "NIFTY":"^NSEI",
+        "SENSEX":"^BSESN",
+        "BANK":"^NSEBANK"
+    }.items():
+        p,c = market_metric(sym)
+        st.metric(name,p,str(c)+"%")
+
+    st.subheader("News")
+    for n in fetch_news("stock market"):
+        st.markdown(f"<div class='news-card'>{n}</div>",unsafe_allow_html=True)
 
 # ======================
-# TAB 5 (NEW)
+# TAB2
 # ======================
+with tab2:
+    st.subheader("Top Movers")
+    df = stocks_df.sample(50)
+    data=[]
+    for s in df["ticker"]:
+        try:
+            h=yf.Ticker(s).history(period="2d")
+            ch=(h["Close"].iloc[-1]-h["Close"].iloc[-2])
+            data.append((s,ch))
+        except: pass
+    st.dataframe(pd.DataFrame(data,columns=["Stock","Change"]))
 
+# ======================
+# TAB3
+# ======================
+with tab3:
+    comp = st.selectbox("Select",stocks_df["SYMBOL"])
+    t = comp+".NS"
+    if st.button("Analyze"):
+        df = yf.Ticker(t).history(period="2y")
+        df = add_features(df)
+        st.line_chart(df[["Close","ma20","ma50"]])
+        st.write("Signal:",signal(df))
+        st.write(run_ai(f"Analyze {comp} stock"))
+
+# ======================
+# TAB4
+# ======================
+with tab4:
+    st.markdown("""
+### How to use
+- View markets  
+- Check movers  
+- Analyze stock  
+- Use advisor  
+
+⚠️ Educational only
+""")
+
+# ======================
+# TAB5 (AI ADVISOR)
+# ======================
 with tab5:
 
-    st.subheader("🎯 AI Risk-Based Investment Advisor")
+    risk = st.selectbox("Risk",["Low","Medium","High"])
+    amt = st.number_input("Amount ₹",10000)
 
-    risk = st.selectbox(
-        "Select Risk Level",
-        ["Low","Medium","High"]
-    )
+    if st.button("Generate Portfolio"):
 
-    investment = st.number_input(
-        "Investment Amount (₹)",
-        value=10000
-    )
+        recs = recommend(risk)
 
-    if st.button("Generate AI Portfolio"):
+        st.subheader("Stocks")
+        st.dataframe(recs)
 
-        recs = recommend_stocks(risk)
+        pf = ai_alloc(recs,amt)
 
-        if not recs.empty:
+        if pf is not None:
+            st.subheader("Portfolio")
+            st.dataframe(pf)
+            st.bar_chart(pf.set_index("stock")["Investment"])
 
-            st.subheader("📊 Recommended Stocks")
-            st.dataframe(recs)
-
-            portfolio = ai_allocate_portfolio(recs, investment)
-
-            if portfolio is not None:
-
-                st.subheader("💼 Portfolio Allocation")
-                st.dataframe(portfolio)
-
-                st.bar_chart(
-                    portfolio.set_index("stock")["Investment (₹)"]
-                )
-
-                
-                # AI explanation
-                prompt = f"""
-Explain this portfolio:
-
-{portfolio.to_dict(orient='records')}
-
-Keep it simple for investors.
-"""
-
-                st.subheader("🤖 AI Strategy")
-                st.write(run_ai(prompt))
-
-            else:
-                st.error("AI allocation failed")
-
-        else:
-            st.warning("No stocks found")
+            st.write(run_ai(f"Explain portfolio {pf.to_dict()}"))
