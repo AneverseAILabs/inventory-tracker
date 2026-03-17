@@ -320,6 +320,7 @@ with tab5:
                     portfolio.set_index("stock")["Investment (₹)"]
                 )
 
+                
                 # AI explanation
                 prompt = f"""
 Explain this portfolio:
